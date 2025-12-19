@@ -1,9 +1,13 @@
 import mongoose from "mongoose";
-import express from "express";
-import cors from "cors";
+import { fa, faker } from "@faker-js/faker";
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb://localhost:27017/Existed");
+    await mongoose.connect(
+      "mongodb://localhost:27017/Learnsphere?directConnection=true",
+      {
+        connectTimeoutMS: 120000,
+      }
+    );
     console.log("Connexion reussie a la base de donnees");
   } catch (err) {
     console.log(err);
@@ -11,91 +15,82 @@ const connectDB = async () => {
 };
 connectDB();
 
-// importation des pays
-const importatation_pays = async () => {
+// chargement des utilisateurs (avec faker) dans la base de donnee
+const loadData = async () => {
+  const categoriesCourses = ["devops", "dev", "web", "mobile", "cloud"];
+  function createRandomUser() {
+    return {
+      _id: new mongoose.Types.ObjectId(),
+      nom: faker.internet.username(),
+      prenom: faker.internet.username(),
+      email: faker.internet.email(),
+      role: faker.helpers.arrayElements(
+        ["formateur", "etudiant", "admin"],
+        faker.number.int({ min: 1, max: 3 })
+      ),
+      date_creation: faker.date.past(),
+    };
+  }
+
+  const users = faker.helpers.multiple(createRandomUser, {
+    count: 1000,
+  });
   try {
-    const data = await fetch(
-      "https://w3.unece.org/PXWeb2015/api/v1/en/STAT/10-CountryOverviews/01-Figures/ZZZ_en_CoSummary_r.px"
-    ).then((res) => res.json());
-    const pays = await data["variables"][1].valueTexts;
+    await mongoose.connection.collection("users").insertMany(users);
+    console.log("Utilisateurs insérés avec succès");
   } catch (err) {
     console.log(err);
   }
-};
-importatation_pays();
-
-// importation de donnee api vers mongo db
-const commentaires = async () => {
-  try {
-    const data = await fetch(
-      "https://jsonplaceholder.typicode.com/comments?userId=1"
-    ).then((res) => res.json());
-    await mongoose.connection.db.collection("commentaires").insertMany(data);
-    console.log("Donnees importées avec succès");
-  } catch (err) {
-    console.log(err);
-  }
-};
-commentaires();
-
-// importation des utilisateurs
-const importation_users = async () => {
-  let pays = [];
-  try {
-    const data = await fetch(
-      "https://w3.unece.org/PXWeb2015/api/v1/en/STAT/10-CountryOverviews/01-Figures/ZZZ_en_CoSummary_r.px"
-    ).then((res) => res.json());
-    pays = await data["variables"][1].valueTexts;
-  } catch (err) {
-    console.log(err);
-  }
-
-  try {
-    const data = await fetch(
-      "https://jsonplaceholder.typicode.com/users?userId=1"
-    ).then((res) => res.json());
-    const users = await data.map((item) => {
-      return {
-        ...item,
-        address: {
-          street: item["address"]["street"],
-          country: pays[Math.floor(Math.random() * pays.length)],
+  function createRandomCourse() {
+    return {
+      _id: new mongoose.Types.ObjectId(),
+      titre: faker.commerce.productName(),
+      prix: faker.commerce.price(),
+      categorie:
+        categoriesCourses[Math.floor(Math.random() * categoriesCourses.length)],
+      module: {
+        titre: faker.commerce.productName(),
+        etapes: {
+          titre: faker.commerce.productName(),
+          duree: faker.number.int({ min: 10, max: 120 }),
         },
-      };
-    });
-    console.log([Math.floor(Math.random() * pays.length)]);
-    await mongoose.connection.db.collection("users").insertMany(users);
-    console.log("importation utilisateur reussie");
+      },
+      avis: {
+        notes: faker.number.int({ min: 1, max: 5 }),
+        commentaires: faker.lorem.sentence(),
+      },
+      formateur: faker.helpers.arrayElement(
+        users.filter((user) => user.role.includes("formateur"))
+      )._id,
+      date_creation: faker.date.past(),
+    };
+  }
+  const courses = faker.helpers.multiple(createRandomCourse, {
+    count: 1000,
+  });
+  try {
+    await mongoose.connection.collection("courses").insertMany(courses);
+    console.log("Cours insérés avec succès");
+  } catch (err) {
+    console.log(err);
+  }
+
+  function createRandomEnrollment() {
+    return {
+      _id: null,
+      user: faker.helpers.arrayElement(users)._id,
+      course: faker.helpers.arrayElement(courses)._id,
+      date_inscription: faker.date.past(),
+    };
+  }
+  const enrollments = faker.helpers.multiple(createRandomEnrollment, {
+    count: 1000,
+  });
+  try {
+    await mongoose.connection.collection("enrollments").insertMany(enrollments);
+    console.log("Enrollments insérés avec succès");
   } catch (err) {
     console.log(err);
   }
 };
-importation_users();
-
-const app = express();
-const port = 3000;
-
-app.use(cors());
-
-// route pour recuperer les commentaires
-app.get("/commentaires", async (req, res) => {
-  try {
-    const data = await mongoose.connection.db.collection("commentaires").find();
-    res.json(data);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-app.get("/users", async (req, res) => {
-  try {
-    const data = await mongoose.connection.db.collection("users").find();
-    res.json(data);
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Application demmarre sur le port  ${port}`);
-});
+loadData();
