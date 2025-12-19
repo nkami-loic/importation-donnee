@@ -80,7 +80,10 @@ app.use(cors());
 // route pour recuperer les commentaires
 app.get("/commentaires", async (req, res) => {
   try {
-    const data = await mongoose.connection.db.collection("commentaires").find();
+    const data = await mongoose.connection.db
+      .collection("commentaires")
+      .find()
+      .toArray();
     res.json(data);
   } catch (err) {
     console.log(err);
