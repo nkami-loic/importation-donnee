@@ -50,10 +50,20 @@ const loadData = async () => {
         categoriesCourses[Math.floor(Math.random() * categoriesCourses.length)],
       module: {
         titre: faker.commerce.productName(),
-        etapes: {
-          titre: faker.commerce.productName(),
-          duree: faker.number.int({ min: 10, max: 120 }),
-        },
+        etapes: [
+          {
+            titre: faker.commerce.productName(),
+            duree: faker.number.int({ min: 10, max: 120 }),
+          },
+          {
+            titre: faker.commerce.productName(),
+            duree: faker.number.int({ min: 10, max: 120 }),
+          },
+          {
+            titre: faker.commerce.productName(),
+            duree: faker.number.int({ min: 10, max: 120 }),
+          },
+        ],
       },
       avis: {
         notes: faker.number.int({ min: 1, max: 5 }),
